@@ -200,20 +200,7 @@ ElementPrototype.verifyValue = function(value) {
         // Embedded message
         case ProtoBuf.TYPES["group"]:
         case ProtoBuf.TYPES["message"]: {
-            if (!value || typeof value !== 'object')
-                fail(typeof value, "object expected");
-            if (value instanceof this.resolvedType.clazz)
-                return value;
-            if (value instanceof ProtoBuf.Builder.Message) {
-                // Mismatched type: Convert to object (see: https://github.com/dcodeIO/ProtoBuf.js/issues/180)
-                var obj = {};
-                for (var i in value)
-                    if (value.hasOwnProperty(i))
-                        obj[i] = value[i];
-                value = obj;
-            }
-            // Else let's try to construct one from a key-value object
-            return new (this.resolvedType.clazz)(value); // May throw for a hundred of reasons
+            return this.resolvedType.verifyValue(value);
         }
     }
 

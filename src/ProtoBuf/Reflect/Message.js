@@ -61,6 +61,13 @@ var Message = function(builder, parent, name, options, isGroup, syntax) {
      * @private
      */
     this._fieldsByName = null;
+
+    /**
+     * A custom translator
+     * @type {?Object.<string,!ProtoBuf.Reflect.Message.Field>}
+     * @private
+     */
+    this._translator = builder.options.translators[this.fqn()] || builder.options.translators[name];
 };
 
 /**
@@ -122,6 +129,8 @@ MessagePrototype.build = function(rebuild) {
  * @export
  */
 MessagePrototype.encode = function(message, buffer, noVerify) {
+    if (this._translator)
+        message = this._translator.encode(message);
     var fieldMissing = null,
         field;
     for (var i=0, k=this._fields.length, val; i<k; ++i) {
@@ -141,6 +150,36 @@ MessagePrototype.encode = function(message, buffer, noVerify) {
     return buffer;
 };
 
+
+/**
+ * Checks if the given value can be set for this type and possibly adjusts the value
+ * @param {*} value Value to check
+ * @return {*} Verified, maybe adjusted, value
+ * @throws {Error} If the value cannot be verified for this element slot
+ * @export
+ */
+MessagePrototype.verifyValue = function(value) {
+    var decode = function (x) { return x; };
+    if (this._translator) {
+        value = this._translator.encode(value); // verify the translated value
+        decode = this._translator.decode;
+    }
+    if (!value || typeof value !== 'object')
+        throw Error("Illegal value for type "+this.name+": "+typeof(value)+" (object expected)");
+    if (value instanceof this.clazz)
+        return decode(value);
+    if (value instanceof ProtoBuf.Builder.Message) {
+        // Mismatched type: Convert to object (see: https://github.com/dcodeIO/ProtoBuf.js/issues/180)
+        var obj = {};
+        for (var i in value)
+            if (value.hasOwnProperty(i))
+                obj[i] = value[i];
+        value = obj;
+    }
+    // Else let's try to construct one from a key-value object
+    return decode(new (this.clazz)(value)); // May throw for a hundred of reasons
+}
+
 /**
  * Calculates a runtime message's byte length.
  * @param {!ProtoBuf.Builder.Message} message Runtime message to encode
@@ -149,6 +188,8 @@ MessagePrototype.encode = function(message, buffer, noVerify) {
  * @export
  */
 MessagePrototype.calculate = function(message) {
+    if (this._translator)
+        message = this._translator.encode(message);
     for (var n=0, i=0, k=this._fields.length, field, val; i<k; ++i) {
         field = this._fields[i];
         val = message[field.name];
@@ -278,5 +319,7 @@ MessagePrototype.decode = function(buffer, length, expectedGroupEndId) {
                 msg[field.name] = field.defaultValue;
         }
     }
+    if (this._translator)
+        msg = this._translator.decode(msg);
     return msg;
 };

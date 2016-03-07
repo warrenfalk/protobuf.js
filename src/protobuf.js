@@ -249,6 +249,13 @@ ProtoBuf.convertFieldsToCamelCase = false;
 ProtoBuf.populateAccessors = true;
 
 /**
+ * Allow custom javascript representations for some message types by provideing encode and decode functions
+ * to translate from the custom javascript representation to the message format and back, respectively.
+ * @type {!Object<string,{encode: function(*), decode: function(*)}>}
+ */
+ProtoBuf.translators = {};
+
+/**
  * By default, messages are populated with default values if a field is not present on the wire. To disable
  *  this behavior, set this setting to `false`.
  * @type {boolean}
@@ -361,6 +368,8 @@ ProtoBuf.newBuilder = function(options) {
         options['convertFieldsToCamelCase'] = ProtoBuf.convertFieldsToCamelCase;
     if (typeof options['populateAccessors'] === 'undefined')
         options['populateAccessors'] = ProtoBuf.populateAccessors;
+    if (typeof options['translators'] === 'undefined')
+        options['translators'] = ProtoBuf.translators;
     return new ProtoBuf.Builder(options);
 };
 

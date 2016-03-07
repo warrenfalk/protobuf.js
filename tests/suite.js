@@ -1361,6 +1361,40 @@
             test.done();
         },
 
+        "translators": function(test) {
+            try {
+                // specify a translation between a protocol buffer message format
+                // and a javascript representation of that type
+                ProtoBuf.translators = {
+                    "TypeICantChange": {
+                        // converts from custom format (string in this case) to message format
+                        encode: function(str) { var n = str.split(/-/); return { n1: parseInt(n[0]), n2: parseInt(n[1]), n3: parseInt(n[2]) }; },
+                        // converts from message format to custom format (string in this case)
+                        decode: function(msg) { return msg.n1 + "-" + msg.n2 + "-" + msg.n3; }
+                    }
+                };
+
+                var proto = ProtoBuf.loadProto("message TypeICantChange { optional fixed32 n1 = 1; optional fixed32 n2 = 2; optional fixed32 n3 = 3; } message Test { optional TypeICantChange value = 1; }");
+                var TypeICantChange = proto.build('TypeICantChange');
+                var Test = proto.build('Test');
+
+                var msg = new Test({
+                    value: "123-456-789",
+                });
+
+                var bytes = msg.encode();
+
+                var msg2 = Test.decode(bytes);
+
+                test.strictEqual(msg2.value, "123-456-789");
+            } catch (e) {
+                fail(e);
+            } finally {
+                ProtoBuf.translators = {};
+            }
+
+        },
+
         "setarray": function(test) {
             try {
                 var builder = ProtoBuf.loadProtoFile(__dirname+"/setarray.proto");
